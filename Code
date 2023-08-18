@@ -1,0 +1,101 @@
+import streamlit as st
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+from pandas_profiling import ProfileReport
+from streamlit_pandas_profiling import st_profile_report
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.linear_model import LogisticRegression
+
+def main():
+    st.title("Data Analysis App")
+
+    menu = ["Data Automatic Exploration", "Data Classification", "Feature Analysis"]
+    choice = st.sidebar.selectbox("Menu", menu)
+
+    if choice == "Data Automatic Exploration":
+        st.subheader("Automated Data Exploration")
+
+        file = st.file_uploader("Upload a dataset", type=["csv", "xlsx"])
+        if file is not None:
+            st.subheader("Dataset")
+            data = pd.read_csv(file)
+            st.dataframe(data)
+
+            profile = ProfileReport(data, explorative=True)
+            st.header("Automated Data Report")
+            st_profile_report(profile)
+    
+    elif choice == "Data Classification":
+        st.subheader("Data Classification")
+
+        file = st.file_uploader("Upload a dataset", type=["csv", "xlsx"])
+        if file is not None:
+            st.subheader("Dataset")
+            data = pd.read_csv(file)
+            st.dataframe(data)
+
+            # Assume last column is target
+            X = data.iloc[:, :-1]
+            y = data.iloc[:, -1]
+
+            X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+            st.subheader("Classification Results")
+
+            if st.button("Classify"):
+                classifiers = [RandomForestClassifier(), SVC(), LogisticRegression()]
+                classifier_names = ["Random Forest", "Support Vector Classifier", "Logistic Regression"]
+
+                accuracies = {}
+
+                for clf, clf_name in zip(classifiers, classifier_names):
+                    clf.fit(X_train, y_train)
+                    y_pred = clf.predict(X_test)
+                    accuracies[clf_name] = accuracy_score(y_test, y_pred)
+                    conf_mat = confusion_matrix(y_test, y_pred)
+
+                    st.write(f"{clf_name} accuracy: ", accuracies[clf_name])
+
+                    st.write(f"{clf_name} confusion matrix:")
+                    fig, ax = plt.subplots()
+                    sns.heatmap(conf_mat, annot=True, fmt='d', ax=ax)
+                    ax.set_xlabel('Predicted')
+                    ax.set_ylabel('Actual')
+                    ax.set_title(f"{clf_name} Confusion Matrix")
+                    st.pyplot(fig)
+
+    elif choice == "Feature Analysis":
+        st.subheader("Feature Analysis")
+
+        file = st.file_uploader("Upload a dataset", type=["csv", "xlsx"])
+        if file is not None:
+            st.subheader("Dataset")
+            data = pd.read_csv(file)
+            st.dataframe(data)
+
+            # Assume last column is target
+            X = data.iloc[:, :-1]
+            y = data.iloc[:, -1]
+
+            if st.button("Feature Analysis"):
+                st.subheader("Feature Analysis Results")
+                st.write("Correlation Matrix:")
+                st.dataframe(data.corr())
+                
+                st.write("Feature Importance:")
+                model = RandomForestClassifier()
+                model.fit(X, y)
+                importances = pd.DataFrame({'feature':X.columns, 'importance':model.feature_importances_})
+                fig = plt.figure()
+                plt.barh(importances['feature'], importances['importance'])
+                plt.xlabel("Importance")
+                plt.ylabel("Feature")
+                plt.title("Feature importances")
+                st.pyplot(fig)
+
+if __name__ == "__main__":
+    main()
